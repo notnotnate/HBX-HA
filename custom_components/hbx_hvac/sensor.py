@@ -68,7 +68,6 @@ THM_SENSORS: tuple[HbxSensorDescription, ...] = (
         name="Heat Setpoint",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
-        entity_category=EntityCategory.CONFIG,
         value_fn=lambda d: d.get("heatTarget"),
     ),
     HbxSensorDescription(
@@ -76,7 +75,6 @@ THM_SENSORS: tuple[HbxSensorDescription, ...] = (
         name="Cool Setpoint",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
-        entity_category=EntityCategory.CONFIG,
         value_fn=lambda d: d.get("coolTarget"),
     ),
     HbxSensorDescription(
