@@ -1,0 +1,13 @@
+# HA secrets / local config
+secrets.yaml
+configuration.yaml
+.storage/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store

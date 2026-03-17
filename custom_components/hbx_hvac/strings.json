@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to SensorLinx",
+        "description": "Enter your SensorLinx Connect API key. Create one at app.sensorlinx.co.",
+        "data": {
+          "api_key": "API Key",
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the SensorLinx API. Check your API key and try again."
+    },
+    "abort": {
+      "already_configured": "This SensorLinx account is already configured."
+    }
+  }
+}
