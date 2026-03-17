@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, device_display_name
 from .coordinator import HbxHvacCoordinator
 
 
@@ -217,6 +217,7 @@ class HbxBinarySensor(CoordinatorEntity[HbxHvacCoordinator], BinarySensorEntity)
         self._attr_unique_id = f"{DOMAIN}_{sync_code}_{description.key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, sync_code)},
+            "name": device_display_name(sync_code),
         }
 
     @property

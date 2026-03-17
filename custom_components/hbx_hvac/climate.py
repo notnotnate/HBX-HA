@@ -27,7 +27,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, device_display_name
 from .coordinator import HbxHvacCoordinator
 
 
@@ -66,7 +66,7 @@ class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
         self._attr_unique_id = f"{DOMAIN}_{sync_code}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, sync_code)},
-            "name": self._device.get("name", sync_code),
+            "name": device_display_name(sync_code),
             "manufacturer": "HBX Control Systems",
             "model": "THM Thermostat",
             "sw_version": str(self._device.get("firmVer", "")),
