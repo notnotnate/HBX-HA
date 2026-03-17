@@ -50,7 +50,6 @@ THM_SENSORS: tuple[HbxSensorDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
         state_class=SensorStateClass.MEASUREMENT,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: (
             None if d.get("floor") == FLOOR_SENSOR_FAULT else d.get("floor")
         ),
