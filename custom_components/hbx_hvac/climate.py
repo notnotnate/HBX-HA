@@ -16,8 +16,6 @@ THM field reference (all °F, all readOnly):
 """
 from __future__ import annotations
 
-import logging
-
 from homeassistant.components.climate import (
     ClimateEntity,
     HVACAction,
@@ -31,10 +29,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import HbxHvacCoordinator
-
-_LOGGER = logging.getLogger(__name__)
-
-FLOOR_SENSOR_FAULT = -36.9  # sentinel value reported when floor sensor is unplugged
 
 
 async def async_setup_entry(
@@ -128,19 +122,3 @@ class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
             return HVACAction.COOLING
         return HVACAction.IDLE
 
-    @property
-    def extra_state_attributes(self) -> dict:
-        d = self._device
-        attrs: dict = {
-            "zone": d.get("zone"),
-            "humidity": d.get("humidity"),
-            "humidity_control": bool(d.get("humidityOn")),
-            "heat_target_f": d.get("heatTarget"),
-            "cool_target_f": d.get("coolTarget"),
-        }
-        floor = d.get("floor")
-        if floor is not None and floor != FLOOR_SENSOR_FAULT:
-            attrs["floor_temp_f"] = floor
-        else:
-            attrs["floor_sensor"] = "fault" if floor == FLOOR_SENSOR_FAULT else None
-        return attrs
