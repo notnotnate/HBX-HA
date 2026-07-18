@@ -16,8 +16,11 @@ THM field reference (all °F, all readOnly):
 """
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.climate import (
     ClimateEntity,
+    ClimateEntityFeature,
     HVACAction,
     HVACMode,
 )
@@ -38,38 +41,40 @@ async def async_setup_entry(
 ) -> None:
     coordinator: HbxHvacCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Create one climate entity per connected THM device
     entities = [
-        HbxThermostat(coordinator, device["syncCode"])
+        HbxThermostat(
+            coordinator,
+            device["syncCode"],
+            device.get("name") or device_display_name(device["syncCode"]),
+        )
         for device in (coordinator.data or [])
-        if device.get("deviceType") == "THM" and device.get("connected")
+        if device.get("deviceType") == "THM"
     ]
     async_add_entities(entities)
 
 
 class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
-    """Read-only climate entity representing a SensorLinx THM thermostat.
-
-    Supported HVAC modes: heat, cool, off (derived from demand bytes).
-    No write support — the API is read-only for THM devices.
-    """
+    """Climate entity representing a SensorLinx THM thermostat."""
 
     _attr_has_entity_name = True
     _attr_name = None  # uses device name
     _attr_temperature_unit = UnitOfTemperature.FAHRENHEIT
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL, HVACMode.HEAT_COOL]
-    _attr_supported_features = 0  # read-only: no HA-initiated setpoint changes
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE
+        | ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+    )
 
-    def __init__(self, coordinator: HbxHvacCoordinator, sync_code: str) -> None:
+    def __init__(self, coordinator: HbxHvacCoordinator, sync_code: str, device_name: str) -> None:
         super().__init__(coordinator)
         self._sync_code = sync_code
         self._attr_unique_id = f"{DOMAIN}_{sync_code}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, sync_code)},
-            "name": device_display_name(sync_code),
+            "name": device_name,
             "manufacturer": "HBX Control Systems",
             "model": "THM Thermostat",
-            "sw_version": str(self._device.get("firmVer", "")),
+            "sw_version": str(coordinator.device_data(sync_code).get("firmVer", "")),
         }
 
     @property
@@ -121,4 +126,19 @@ class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
         if demand2 > 0:
             return HVACAction.COOLING
         return HVACAction.IDLE
+
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        patch: dict[str, Any] = {}
+        if (high := kwargs.get("target_temp_high")) is not None:
+            patch["coolTarget"] = high
+        if (low := kwargs.get("target_temp_low")) is not None:
+            patch["heatTarget"] = low
+        if (temp := kwargs.get("temperature")) is not None:
+            if self.hvac_mode == HVACMode.COOL:
+                patch["coolTarget"] = temp
+            else:
+                patch["heatTarget"] = temp
+        if patch:
+            await self.coordinator.api.patch_device(self._sync_code, patch)
+            await self.coordinator.async_request_refresh()
 

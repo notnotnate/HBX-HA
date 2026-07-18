@@ -156,14 +156,15 @@ async def async_setup_entry(
     for device in coordinator.data or []:
         sync_code = device["syncCode"]
         dtype = device.get("deviceType")
+        device_name = device.get("name") or device_display_name(sync_code)
 
         if dtype == "THM":
             entities += [
-                HbxSensor(coordinator, sync_code, desc) for desc in THM_SENSORS
+                HbxSensor(coordinator, sync_code, desc, device_name) for desc in THM_SENSORS
             ]
         elif dtype == "ECO":
             entities += [
-                HbxSensor(coordinator, sync_code, desc) for desc in ECO_SENSORS
+                HbxSensor(coordinator, sync_code, desc, device_name) for desc in ECO_SENSORS
             ]
 
     async_add_entities(entities)
@@ -178,6 +179,7 @@ class HbxSensor(CoordinatorEntity[HbxHvacCoordinator], SensorEntity):
         coordinator: HbxHvacCoordinator,
         sync_code: str,
         description: HbxSensorDescription,
+        device_name: str,
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
@@ -185,7 +187,7 @@ class HbxSensor(CoordinatorEntity[HbxHvacCoordinator], SensorEntity):
         self._attr_unique_id = f"{DOMAIN}_{sync_code}_{description.key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, sync_code)},
-            "name": device_display_name(sync_code),
+            "name": device_name,
         }
 
     @property

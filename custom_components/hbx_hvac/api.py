@@ -35,6 +35,18 @@ class HbxHvacApi:
         data = await self._get("/devices")
         return data.get("items", [])
 
+    async def patch_device(self, sync_code: str, data: dict[str, Any]) -> dict[str, Any]:
+        """Update device fields via PATCH /devices/{syncCode}."""
+        url = API_BASE + f"/devices/{sync_code}"
+        try:
+            async with self._session.patch(
+                url, headers=self._headers, json=data, timeout=aiohttp.ClientTimeout(total=10)
+            ) as resp:
+                resp.raise_for_status()
+                return await resp.json()
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            raise HbxApiError(f"PATCH {url} failed: {err}") from err
+
     async def _get(self, path: str) -> dict[str, Any]:
         url = API_BASE + path
         try:
