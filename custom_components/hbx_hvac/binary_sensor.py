@@ -27,18 +27,46 @@ class HbxBinarySensorDescription(BinarySensorEntityDescription):
 
 # ── THM thermostat binary sensors ────────────────────────────────────────────
 
+def _thm_demand(key: str) -> Callable[[dict[str, Any]], bool | None]:
+    def _fn(d: dict[str, Any]) -> bool | None:
+        for demand in d.get("demands", []):
+            if demand.get("key") == key:
+                return demand.get("activated", False)
+        return None
+    return _fn
+
+
 THM_BINARY_SENSORS: tuple[HbxBinarySensorDescription, ...] = (
     HbxBinarySensorDescription(
         key="heating_active",
         name="Heating",
         device_class=BinarySensorDeviceClass.HEAT,
-        value_fn=lambda d: (d.get("demand1") or 0) > 0,
+        value_fn=_thm_demand("heating"),
     ),
     HbxBinarySensorDescription(
         key="cooling_active",
         name="Cooling",
         device_class=BinarySensorDeviceClass.COLD,
-        value_fn=lambda d: (d.get("demand2") or 0) > 0,
+        value_fn=_thm_demand("cooling"),
+    ),
+    HbxBinarySensorDescription(
+        key="fan_active",
+        name="Fan",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=_thm_demand("fan"),
+    ),
+    HbxBinarySensorDescription(
+        key="satisfied",
+        name="Satisfied",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_thm_demand("satisfied"),
+    ),
+    HbxBinarySensorDescription(
+        key="away",
+        name="Away",
+        device_class=BinarySensorDeviceClass.PRESENCE,
+        value_fn=lambda d: not d.get("away", False),
     ),
     HbxBinarySensorDescription(
         key="humidity_control",

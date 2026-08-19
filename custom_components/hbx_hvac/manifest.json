@@ -1,7 +1,7 @@
 {
   "domain": "hbx_hvac",
   "name": "HBX HVAC (SensorLinx)",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "config_flow": true,
   "documentation": "https://docs.connect.sensorlinx.co/reference",
   "requirements": [],

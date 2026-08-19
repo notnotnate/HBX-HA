@@ -1,19 +1,4 @@
-"""Climate entities for HBX HVAC (SensorLinx THM thermostats).
-
-The SensorLinx Connect API is read-only for THM devices — all fields are
-marked readOnly in the OpenAPI schema. Control is done at the physical device.
-
-THM field reference (all °F, all readOnly):
-  room        current room temperature
-  floor       current floor temperature (-36.9 = sensor fault/unplugged)
-  heatTarget  heating setpoint (32–150 °F)
-  coolTarget  cooling setpoint (32–150 °F)
-  humidity    relative humidity %
-  demand1     heating demand byte  (0 = idle, >0 = active)
-  demand2     cooling demand byte  (0 = idle, >0 = active)
-  zone        zone number
-  humidityOn  1 = humidity control enabled
-"""
+"""Climate entities for HBX HVAC (SensorLinx THM thermostats)."""
 from __future__ import annotations
 
 from typing import Any
@@ -32,6 +17,19 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, device_display_name
 from .coordinator import HbxHvacCoordinator
+
+# cngOvr field: 0=auto, 1=heat, 2=cool, 3=off
+_CNGVR_TO_MODE: dict[int, HVACMode] = {
+    0: HVACMode.HEAT_COOL,
+    1: HVACMode.HEAT,
+    2: HVACMode.COOL,
+    3: HVACMode.OFF,
+}
+_MODE_TO_CNGVR: dict[HVACMode, int] = {v: k for k, v in _CNGVR_TO_MODE.items()}
+
+# fanMode field: 0=off, 1=on, 2=intermittent
+_FAN_INT_TO_STR: dict[int, str] = {0: "off", 1: "on", 2: "auto"}
+_FAN_STR_TO_INT: dict[str, int] = {v: k for k, v in _FAN_INT_TO_STR.items()}
 
 
 async def async_setup_entry(
@@ -57,12 +55,14 @@ class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
     """Climate entity representing a SensorLinx THM thermostat."""
 
     _attr_has_entity_name = True
-    _attr_name = None  # uses device name
+    _attr_name = None
     _attr_temperature_unit = UnitOfTemperature.FAHRENHEIT
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL, HVACMode.HEAT_COOL]
+    _attr_fan_modes = ["off", "on", "auto"]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        | ClimateEntityFeature.FAN_MODE
     )
 
     def __init__(self, coordinator: HbxHvacCoordinator, sync_code: str, device_name: str) -> None:
@@ -91,11 +91,12 @@ class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        """Return the active setpoint based on current mode."""
         mode = self.hvac_mode
+        if mode == HVACMode.HEAT:
+            return self._device.get("heatTarget")
         if mode == HVACMode.COOL:
             return self._device.get("coolTarget")
-        return self._device.get("heatTarget")
+        return None
 
     @property
     def target_temperature_high(self) -> float | None:
@@ -107,25 +108,20 @@ class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
 
     @property
     def hvac_mode(self) -> HVACMode:
-        demand1 = self._device.get("demand1", 0)
-        demand2 = self._device.get("demand2", 0)
-        if demand1 > 0 and demand2 > 0:
-            return HVACMode.HEAT_COOL
-        if demand1 > 0:
-            return HVACMode.HEAT
-        if demand2 > 0:
-            return HVACMode.COOL
-        return HVACMode.OFF
+        return _CNGVR_TO_MODE.get(self._device.get("cngOvr", 3), HVACMode.OFF)
 
     @property
     def hvac_action(self) -> HVACAction:
-        demand1 = self._device.get("demand1", 0)
-        demand2 = self._device.get("demand2", 0)
-        if demand1 > 0:
-            return HVACAction.HEATING
-        if demand2 > 0:
-            return HVACAction.COOLING
+        for demand in self._device.get("demands", []):
+            if demand.get("key") == "heating" and demand.get("activated"):
+                return HVACAction.HEATING
+            if demand.get("key") == "cooling" and demand.get("activated"):
+                return HVACAction.COOLING
         return HVACAction.IDLE
+
+    @property
+    def fan_mode(self) -> str:
+        return _FAN_INT_TO_STR.get(self._device.get("fanMode", 0), "off")
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         patch: dict[str, Any] = {}
@@ -142,3 +138,14 @@ class HbxThermostat(CoordinatorEntity[HbxHvacCoordinator], ClimateEntity):
             await self.coordinator.api.patch_device(self._sync_code, patch)
             await self.coordinator.async_request_refresh()
 
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        await self.coordinator.api.patch_device(
+            self._sync_code, {"cngOvr": _MODE_TO_CNGVR[hvac_mode]}
+        )
+        await self.coordinator.async_request_refresh()
+
+    async def async_set_fan_mode(self, fan_mode: str) -> None:
+        await self.coordinator.api.patch_device(
+            self._sync_code, {"fanMode": _FAN_STR_TO_INT[fan_mode]}
+        )
+        await self.coordinator.async_request_refresh()
