@@ -63,12 +63,6 @@ THM_BINARY_SENSORS: tuple[HbxBinarySensorDescription, ...] = (
         value_fn=_thm_demand("satisfied"),
     ),
     HbxBinarySensorDescription(
-        key="away",
-        name="Away",
-        device_class=BinarySensorDeviceClass.PRESENCE,
-        value_fn=lambda d: not d.get("away", False),
-    ),
-    HbxBinarySensorDescription(
         key="humidity_control",
         name="Humidity Control",
         device_class=BinarySensorDeviceClass.RUNNING,

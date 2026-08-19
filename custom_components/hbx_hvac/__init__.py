@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .coordinator import HbxHvacCoordinator
 
-PLATFORMS = [Platform.CLIMATE, Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER]
+PLATFORMS = [Platform.CLIMATE, Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SWITCH]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
