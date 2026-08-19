@@ -1,4 +1,5 @@
 {
   "name": "HBX HVAC (SensorLinx)",
-  "render_readme": true
+  "render_readme": true,
+  "filename": "hbx_hvac.zip"
 }
