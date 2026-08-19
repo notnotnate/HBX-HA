@@ -119,15 +119,56 @@ THM_SENSORS: tuple[HbxSensorDescription, ...] = (
     ),
 )
 
+# ── ZON zone controller sensors ───────────────────────────────────────────────
+
+ZON_SENSORS: tuple[HbxSensorDescription, ...] = (
+    HbxSensorDescription(
+        key="wwsd",
+        name="WWSD Setpoint",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("wwsd"),
+    ),
+    HbxSensorDescription(
+        key="dhwTarget",
+        name="DHW Target",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("dhwTarget"),
+    ),
+    HbxSensorDescription(
+        key="zonePriority",
+        name="Priority",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("zonePriority"),
+    ),
+)
+
 # ── ECO boiler controller sensors ────────────────────────────────────────────
 
-def _eco_temp(index: int, field: str) -> Callable[[dict], Any]:
+def _eco_temp_by_type(type_val: str, field: str) -> Callable[[dict], Any]:
     def _fn(d: dict) -> Any:
-        temps = d.get("temperatures", [])
-        if index < len(temps) and temps[index].get("enabled"):
-            return temps[index].get(field)
+        for t in d.get("temperatures", []):
+            if t.get("enabled") and t.get("type") == type_val:
+                return t.get(field)
         return None
     return _fn
+
+def _eco_tank_current(d: dict) -> Any:
+    """Return current temp for the main tank (type single or hot)."""
+    for t in d.get("temperatures", []):
+        if t.get("enabled") and t.get("type") in ("single", "hot"):
+            return t.get("current")
+    return None
+
+def _eco_tank_target(d: dict) -> Any:
+    """Return target temp for the main tank (type single or hot)."""
+    for t in d.get("temperatures", []):
+        if t.get("enabled") and t.get("type") in ("single", "hot"):
+            return t.get("target")
+    return None
 
 
 ECO_SENSORS: tuple[HbxSensorDescription, ...] = (
@@ -137,15 +178,23 @@ ECO_SENSORS: tuple[HbxSensorDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_eco_temp(0, "current"),
+        value_fn=_eco_tank_current,
     ),
     HbxSensorDescription(
         key="tank_target",
         name="Tank Target",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
-        entity_category=EntityCategory.CONFIG,
-        value_fn=_eco_temp(0, "target"),
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_eco_tank_target,
+    ),
+    HbxSensorDescription(
+        key="cold_tank_temp",
+        name="Cold Tank Temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_eco_temp_by_type("cold", "current"),
     ),
     HbxSensorDescription(
         key="outdoor_temp",
@@ -153,7 +202,31 @@ ECO_SENSORS: tuple[HbxSensorDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_eco_temp(2, "current"),
+        value_fn=_eco_temp_by_type("outdoor", "current"),
+    ),
+    HbxSensorDescription(
+        key="dhwTarget",
+        name="DHW Target",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("dhwTarget"),
+    ),
+    HbxSensorDescription(
+        key="wwsd",
+        name="WWSD Setpoint",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("wwsd"),
+    ),
+    HbxSensorDescription(
+        key="cwsd",
+        name="CWSD Setpoint",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("cwsd"),
     ),
 )
 
@@ -176,6 +249,10 @@ async def async_setup_entry(
         if dtype == "THM":
             entities += [
                 HbxSensor(coordinator, sync_code, desc, device_name) for desc in THM_SENSORS
+            ]
+        elif dtype == "ZON":
+            entities += [
+                HbxSensor(coordinator, sync_code, desc, device_name) for desc in ZON_SENSORS
             ]
         elif dtype == "ECO":
             entities += [

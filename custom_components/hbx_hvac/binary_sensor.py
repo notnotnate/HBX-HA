@@ -91,14 +91,99 @@ THM_BINARY_SENSORS: tuple[HbxBinarySensorDescription, ...] = (
     ),
 )
 
+# ── ZON zone controller binary sensors ───────────────────────────────────────
+
+def _zon_demand(key: str) -> Callable[[dict[str, Any]], bool | None]:
+    def _fn(d: dict[str, Any]) -> bool | None:
+        for demand in d.get("demands", []):
+            if demand.get("key") == key:
+                return demand.get("activated", False)
+        return None
+    return _fn
+
+
+def _zon_fancoil(key: str) -> Callable[[dict[str, Any]], bool | None]:
+    def _fn(d: dict[str, Any]) -> bool | None:
+        for fc in d.get("fancoil", []):
+            if fc.get("key") == key:
+                return fc.get("activated", False)
+        return None
+    return _fn
+
+
+def _zon_pump(key: str) -> Callable[[dict[str, Any]], bool | None]:
+    def _fn(d: dict[str, Any]) -> bool | None:
+        for pump in d.get("pumps", []):
+            if pump.get("key") == key:
+                return pump.get("activated", False)
+        return None
+    return _fn
+
+
+ZON_BINARY_SENSORS: tuple[HbxBinarySensorDescription, ...] = (
+    HbxBinarySensorDescription(
+        key="demand1",
+        name="Demand 1",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=_zon_demand("demand1"),
+    ),
+    HbxBinarySensorDescription(
+        key="demand2",
+        name="Demand 2",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=_zon_demand("demand2"),
+    ),
+    HbxBinarySensorDescription(
+        key="demand3",
+        name="Demand 3",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=_zon_demand("demand3"),
+    ),
+    HbxBinarySensorDescription(
+        key="fancoil_heating",
+        name="Heating",
+        device_class=BinarySensorDeviceClass.HEAT,
+        value_fn=_zon_fancoil("heating"),
+    ),
+    HbxBinarySensorDescription(
+        key="fancoil_cooling",
+        name="Cooling",
+        device_class=BinarySensorDeviceClass.COLD,
+        value_fn=_zon_fancoil("cooling"),
+    ),
+    HbxBinarySensorDescription(
+        key="fancoil_fan",
+        name="Fan",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=_zon_fancoil("fan"),
+    ),
+    HbxBinarySensorDescription(
+        key="pump1",
+        name="Pump 1",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_zon_pump("pump1"),
+    ),
+    HbxBinarySensorDescription(
+        key="pump2",
+        name="Pump 2",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_zon_pump("pump2"),
+    ),
+    HbxBinarySensorDescription(
+        key="connected",
+        name="Connected",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("connected", False),
+    ),
+)
+
 # ── ECO boiler controller binary sensors ─────────────────────────────────────
 
-def _relay(key: str) -> Callable[[dict], bool | None]:
-    return lambda d: d.get("relays", {}).get(key)
-
-
-def _demand(name: str) -> Callable[[dict], bool | None]:
-    def _fn(d: dict) -> bool | None:
+def _eco_demand(name: str) -> Callable[[dict[str, Any]], bool | None]:
+    def _fn(d: dict[str, Any]) -> bool | None:
         for demand in d.get("demands", []):
             if demand.get("name") == name:
                 return demand.get("activated", False)
@@ -106,91 +191,104 @@ def _demand(name: str) -> Callable[[dict], bool | None]:
     return _fn
 
 
+def _eco_pump(key: str) -> Callable[[dict[str, Any]], bool | None]:
+    def _fn(d: dict[str, Any]) -> bool | None:
+        for pump in d.get("pumps", []):
+            if pump.get("key") == key:
+                return pump.get("activated", False)
+        return None
+    return _fn
+
+
 ECO_BINARY_SENSORS: tuple[HbxBinarySensorDescription, ...] = (
-    # Relays
-    HbxBinarySensorDescription(
-        key="relay_stage1",
-        name="Stage 1",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("stage1"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_stage2",
-        name="Stage 2",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("stage2"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_stage3",
-        name="Stage 3",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("stage3"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_stage4",
-        name="Stage 4",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("stage4"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_pump1",
-        name="Pump 1",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("pump1"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_pump2",
-        name="Pump 2",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("pump2"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_pump3",
-        name="Pump 3",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("pump3"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_backup",
-        name="Backup",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("backup"),
-    ),
-    HbxBinarySensorDescription(
-        key="relay_reversing_valve",
-        name="Reversing Valve",
-        device_class=BinarySensorDeviceClass.OPENING,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_relay("reversingValve"),
-    ),
-    # Demands
     HbxBinarySensorDescription(
         key="demand_heat",
         name="Heat Demand",
         device_class=BinarySensorDeviceClass.HEAT,
-        value_fn=_demand("hd"),
+        value_fn=_eco_demand("hd"),
     ),
     HbxBinarySensorDescription(
         key="demand_cool",
         name="Cool Demand",
         device_class=BinarySensorDeviceClass.COLD,
-        value_fn=_demand("cd"),
+        value_fn=_eco_demand("cd"),
     ),
     HbxBinarySensorDescription(
         key="demand_dhw",
         name="Domestic Hot Water Demand",
         device_class=BinarySensorDeviceClass.RUNNING,
-        value_fn=_demand("dhw"),
+        value_fn=_eco_demand("dhw"),
     ),
-    # Connectivity
+    HbxBinarySensorDescription(
+        key="stage1",
+        name="Stage 1",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("stages", {}).get("stage1"),
+    ),
+    HbxBinarySensorDescription(
+        key="stage2",
+        name="Stage 2",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("stages", {}).get("stage2"),
+    ),
+    HbxBinarySensorDescription(
+        key="stage3",
+        name="Stage 3",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("stages", {}).get("stage3"),
+    ),
+    HbxBinarySensorDescription(
+        key="stage4",
+        name="Stage 4",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("stages", {}).get("stage4"),
+    ),
+    HbxBinarySensorDescription(
+        key="backup",
+        name="Backup",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("backup", {}).get("activated"),
+    ),
+    HbxBinarySensorDescription(
+        key="reversing_valve",
+        name="Reversing Valve",
+        device_class=BinarySensorDeviceClass.OPENING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("reversingValve", {}).get("activated"),
+    ),
+    HbxBinarySensorDescription(
+        key="pump1",
+        name="Pump 1",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_eco_pump("pump1"),
+    ),
+    HbxBinarySensorDescription(
+        key="pump2",
+        name="Pump 2",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_eco_pump("pump2"),
+    ),
+    HbxBinarySensorDescription(
+        key="wwsd",
+        name="WWSD",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("wsd", {}).get("wwsd", {}).get("activated"),
+    ),
+    HbxBinarySensorDescription(
+        key="cwsd",
+        name="CWSD",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.get("wsd", {}).get("cwsd", {}).get("activated"),
+    ),
     HbxBinarySensorDescription(
         key="connected",
         name="Connected",
@@ -220,6 +318,11 @@ async def async_setup_entry(
             entities += [
                 HbxBinarySensor(coordinator, sync_code, desc, device_name)
                 for desc in THM_BINARY_SENSORS
+            ]
+        elif dtype == "ZON":
+            entities += [
+                HbxBinarySensor(coordinator, sync_code, desc, device_name)
+                for desc in ZON_BINARY_SENSORS
             ]
         elif dtype == "ECO":
             entities += [
